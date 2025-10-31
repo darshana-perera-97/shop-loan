@@ -36,3 +36,24 @@
     transform: rotate(360deg);
   }
 }
+
+/* Dashboard card styling */
+.dashboard-card {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.dashboard-card:hover {
+  border-color: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-card h5 {
+  color: #000;
+}
+
+.dashboard-card:hover h5 {
+  color: #000;
+}
