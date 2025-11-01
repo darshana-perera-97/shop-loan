@@ -1,5 +1,6 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:2026';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.187.24:2026';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:2026';
 
 export const API_ENDPOINTS = {
   CUSTOMERS: `${API_BASE_URL}/api/customers`,

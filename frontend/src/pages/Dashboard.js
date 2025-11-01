@@ -2,11 +2,23 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 function Dashboard() {
+  // Get greeting based on current time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  };
+
   return (
     <div className="container mt-5">
-      <h1 className="mb-2 fw-light">Dashboard</h1>
-      <p className="text-muted mb-5">Loan Management System</p>
-      
+      <p className="text-muted ">{getGreeting()}</p>
+      <h1 className="mb-2 fw-light mb-5">Dashboard</h1>
+
       <div className="row g-4">
         <div className="col-md-6 col-lg-4">
           <Link to="/add-customer" className="text-decoration-none">
@@ -18,7 +30,7 @@ function Dashboard() {
             </div>
           </Link>
         </div>
-        
+
         <div className="col-md-6 col-lg-4">
           <Link to="/view-customers" className="text-decoration-none">
             <div className="card dashboard-card h-100">
@@ -29,7 +41,7 @@ function Dashboard() {
             </div>
           </Link>
         </div>
-        
+
         <div className="col-md-6 col-lg-4">
           <Link to="/add-bills" className="text-decoration-none">
             <div className="card dashboard-card h-100">
@@ -40,7 +52,7 @@ function Dashboard() {
             </div>
           </Link>
         </div>
-        
+
         <div className="col-md-6 col-lg-4">
           <Link to="/all-bills" className="text-decoration-none">
             <div className="card dashboard-card h-100">
@@ -51,7 +63,7 @@ function Dashboard() {
             </div>
           </Link>
         </div>
-        
+
         <div className="col-md-6 col-lg-4">
           <Link to="/add-payments" className="text-decoration-none">
             <div className="card dashboard-card h-100">
