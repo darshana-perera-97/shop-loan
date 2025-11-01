@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 
 function AllBills() {
   const [bills, setBills] = useState([]);
@@ -16,7 +17,7 @@ function AllBills() {
   const fetchBills = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:2026/api/bills');
+      const response = await fetch(API_ENDPOINTS.BILLS);
       const data = await response.json();
 
       if (data.success) {
@@ -126,6 +127,7 @@ function AllBills() {
                   <th>Customer Name</th>
                   <th>Customer ID</th>
                   <th>Bill Amount</th>
+                  <th>Bill Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,6 +137,7 @@ function AllBills() {
                     <td>{bill.customerName}</td>
                     <td>{bill.customerId}</td>
                     <td>LKR {formatAmount(bill.billAmount)}</td>
+                    <td>{bill.billDate ? new Date(bill.billDate).toLocaleDateString() : '-'}</td>
                   </tr>
                 ))}
               </tbody>

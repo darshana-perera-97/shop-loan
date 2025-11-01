@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { API_ENDPOINTS } from '../config/api';
 
 function SingleCustomer() {
   const { id } = useParams();
@@ -8,6 +11,7 @@ function SingleCustomer() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('all');
 
   useEffect(() => {
     fetchCustomerData();
@@ -18,7 +22,7 @@ function SingleCustomer() {
       setLoading(true);
       
       // Fetch customer
-      const customerResponse = await fetch(`http://localhost:2026/api/customers/${id}`);
+      const customerResponse = await fetch(API_ENDPOINTS.CUSTOMER_BY_ID(id));
       const customerData = await customerResponse.json();
       
       if (customerData.success) {
@@ -29,14 +33,14 @@ function SingleCustomer() {
       }
 
       // Fetch bills
-      const billsResponse = await fetch(`http://localhost:2026/api/bills/customer/${id}`);
+      const billsResponse = await fetch(API_ENDPOINTS.BILLS_BY_CUSTOMER(id));
       const billsData = await billsResponse.json();
       if (billsData.success) {
         setBills(billsData.bills || []);
       }
 
       // Fetch payments
-      const paymentsResponse = await fetch(`http://localhost:2026/api/payments/customer/${id}`);
+      const paymentsResponse = await fetch(API_ENDPOINTS.PAYMENTS_BY_CUSTOMER(id));
       const paymentsData = await paymentsResponse.json();
       if (paymentsData.success) {
         setPayments(paymentsData.payments || []);
@@ -58,8 +62,146 @@ function SingleCustomer() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    try {
+      // Handle date string (YYYY-MM-DD format from billDate)
+      if (dateString.includes('T')) {
+        // ISO date string (from createdAt)
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+      } else {
+        // Date string format (YYYY-MM-DD from billDate)
+        const date = new Date(dateString + 'T00:00:00');
+        return date.toLocaleDateString();
+      }
+    } catch (e) {
+      return dateString;
+    }
+  };
+
+  const formatBillDate = (bill) => {
+    // Prioritize billDate, fallback to createdAt for backwards compatibility
+    if (bill.billDate) {
+      return formatDate(bill.billDate);
+    }
+    // Only use createdAt if billDate doesn't exist (for old bills)
+    return formatDate(bill.createdAt);
+  };
+
+  // Get the date string from a bill (for filtering)
+  const getBillDateString = (bill) => {
+    if (bill.billDate) {
+      return bill.billDate;
+    }
+    return bill.createdAt || '';
+  };
+
+  // Extract month-year from date string (YYYY-MM-DD or ISO string)
+  const getMonthYear = (dateString) => {
+    if (!dateString) return null;
+    try {
+      let date;
+      if (dateString.includes('T')) {
+        date = new Date(dateString);
+      } else {
+        date = new Date(dateString + 'T00:00:00');
+      }
+      if (isNaN(date.getTime())) return null;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      return `${year}-${month}`;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Get unique months from bills
+  const getAvailableMonths = () => {
+    const months = new Set();
+    bills.forEach(bill => {
+      const monthYear = getMonthYear(getBillDateString(bill));
+      if (monthYear) {
+        months.add(monthYear);
+      }
+    });
+    return Array.from(months).sort().reverse(); // Most recent first
+  };
+
+  // Format month-year for display (e.g., "2024-01" -> "January 2024")
+  const formatMonthYear = (monthYear) => {
+    if (!monthYear) return '';
+    const [year, month] = monthYear.split('-');
+    const date = new Date(year, parseInt(month) - 1, 1);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+  };
+
+  // Filter bills by selected month
+  const filteredBills = selectedMonth === 'all' 
+    ? bills 
+    : bills.filter(bill => {
+        const monthYear = getMonthYear(getBillDateString(bill));
+        return monthYear === selectedMonth;
+      });
+
+  // Download PDF function
+  const downloadBillsPDF = () => {
+    if (filteredBills.length === 0) return;
+
+    const doc = new jsPDF();
+    
+    // Add customer name
+    doc.setFontSize(18);
+    doc.text(customer.customerName, 14, 20);
+    
+    // Add generated date
+    doc.setFontSize(10);
+    const generatedDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    doc.text(`Generated on: ${generatedDate}`, 14, 30);
+    
+    // Add filter info if not showing all months
+    if (selectedMonth !== 'all') {
+      doc.setFontSize(10);
+      doc.text(`Month: ${formatMonthYear(selectedMonth)}`, 14, 36);
+    }
+    
+    // Prepare table data
+    const tableData = filteredBills.map(bill => [
+      bill.billNumber,
+      `LKR ${formatAmount(bill.billAmount)}`,
+      formatBillDate(bill)
+    ]);
+
+    // Add table
+    autoTable(doc, {
+      startY: selectedMonth !== 'all' ? 42 : 36,
+      head: [['Bill Number', 'Amount', 'Date']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 70 }
+      }
+    });
+
+    // Calculate total
+    const filteredTotal = filteredBills.reduce((sum, bill) => sum + (bill.billAmount || 0), 0);
+    const finalY = doc.lastAutoTable.finalY + 10;
+    
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Total: LKR ${formatAmount(filteredTotal)}`, 14, finalY);
+    
+    // Save PDF
+    const fileName = `${customer.customerName}_Bills_${selectedMonth !== 'all' ? formatMonthYear(selectedMonth).replace(' ', '_') : 'All'}.pdf`;
+    doc.save(fileName);
   };
 
   // Calculate totals
@@ -130,10 +272,42 @@ function SingleCustomer() {
       <div className="row g-4">
         {/* Bills Table */}
         <div className="col-md-6">
-          <h4 className="mb-3">Bills</h4>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h4 className="mb-0">Bills</h4>
+            {bills.length > 0 && (
+              <div className="d-flex gap-2 align-items-center">
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: 'auto' }}
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  <option value="all">All Months</option>
+                  {getAvailableMonths().map(month => (
+                    <option key={month} value={month}>
+                      {formatMonthYear(month)}
+                    </option>
+                  ))}
+                </select>
+                {filteredBills.length > 0 && (
+                  <button
+                    className="btn btn-outline-dark btn-sm"
+                    onClick={downloadBillsPDF}
+                    title="Download Bills as PDF"
+                  >
+                    Download PDF
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           {bills.length === 0 ? (
             <div className="alert alert-info" role="alert">
               No bills found for this customer.
+            </div>
+          ) : filteredBills.length === 0 ? (
+            <div className="alert alert-info" role="alert">
+              No bills found for the selected month.
             </div>
           ) : (
             <div className="table-responsive">
@@ -146,11 +320,11 @@ function SingleCustomer() {
                   </tr>
                 </thead>
                 <tbody>
-                  {bills.map((bill) => (
+                  {filteredBills.map((bill) => (
                     <tr key={bill.billNumber}>
                       <td>{bill.billNumber}</td>
                       <td>LKR {formatAmount(bill.billAmount)}</td>
-                      <td>{formatDate(bill.createdAt)}</td>
+                      <td>{formatBillDate(bill)}</td>
                     </tr>
                   ))}
                 </tbody>

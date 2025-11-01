@@ -1,12 +1,38 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 
 function AddBills() {
-  const [formData, setFormData] = useState({
-    billNumber: '',
-    customerId: '',
-    billAmount: '',
-    notes: ''
-  });
+  // Load saved form data from localStorage
+  const loadSavedFormData = () => {
+    // Default to today's date
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      const saved = localStorage.getItem('addBillsLastData');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          billNumber: '',
+          customerId: '', // Don't pre-fill customer
+          billAmount: '', // Don't pre-fill bill amount
+          billDate: parsed.billDate || today,
+          notes: parsed.notes || ''
+        };
+      }
+    } catch (error) {
+      console.error('Error loading saved form data:', error);
+    }
+    
+    return {
+      billNumber: '',
+      customerId: '',
+      billAmount: '',
+      billDate: today,
+      notes: ''
+    };
+  };
+
+  const [formData, setFormData] = useState(loadSavedFormData());
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,7 +43,24 @@ function AddBills() {
 
   useEffect(() => {
     fetchCustomers();
+    // Set search term if customer is pre-selected
+    if (formData.customerId) {
+      const customer = customers.find(c => c.customerId === formData.customerId);
+      if (customer) {
+        setSearchTerm(`${customer.customerId} - ${customer.customerName}`);
+      }
+    }
   }, []);
+
+  // Update search term when customers load and customerId is set
+  useEffect(() => {
+    if (formData.customerId && customers.length > 0) {
+      const customer = customers.find(c => c.customerId === formData.customerId);
+      if (customer) {
+        setSearchTerm(`${customer.customerId} - ${customer.customerName}`);
+      }
+    }
+  }, [customers, formData.customerId]);
 
   useEffect(() => {
     if (searchTerm === '') {
@@ -47,7 +90,7 @@ function AddBills() {
   const fetchCustomers = async () => {
     try {
       setCustomersLoading(true);
-      const response = await fetch('http://localhost:2026/api/customers');
+      const response = await fetch(API_ENDPOINTS.CUSTOMERS);
       const data = await response.json();
 
       if (data.success) {
@@ -122,7 +165,7 @@ function AddBills() {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch('http://localhost:2026/api/bills', {
+      const response = await fetch(API_ENDPOINTS.BILLS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,13 +177,23 @@ function AddBills() {
 
       if (response.ok && data.success) {
         setMessage({ type: 'success', text: data.message || 'Bill added successfully!' });
-        // Reset form
+        
+        // Save form data (excluding billNumber, customerId, billAmount) as default for next time
+        const dataToSave = {
+          billDate: formData.billDate,
+          notes: formData.notes
+        };
+        localStorage.setItem('addBillsLastData', JSON.stringify(dataToSave));
+        
+        // Reset form - keep billDate and notes, clear customer and bill amount
         setFormData({
           billNumber: '',
           customerId: '',
           billAmount: '',
-          notes: ''
+          billDate: formData.billDate,
+          notes: formData.notes
         });
+        // Clear search term
         setSearchTerm('');
       } else {
         setMessage({ type: 'danger', text: data.message || 'Failed to add bill' });
@@ -243,6 +296,21 @@ function AddBills() {
                 onChange={handleChange}
                 step="0.01"
                 min="0.01"
+                required
+              />
+            </div>
+
+            <div className="mb-3">
+              <label htmlFor="billDate" className="form-label text-start d-block">
+                Bill Date <span className="text-danger">*</span>
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                id="billDate"
+                name="billDate"
+                value={formData.billDate}
+                onChange={handleChange}
                 required
               />
             </div>

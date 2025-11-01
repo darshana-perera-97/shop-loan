@@ -265,7 +265,7 @@ app.get('/api/bills/customer/:id', (req, res) => {
 // Create bill endpoint
 app.post('/api/bills', (req, res) => {
   try {
-    const { billNumber, customerId, billAmount, notes } = req.body;
+    const { billNumber, customerId, billAmount, billDate, notes } = req.body;
     console.log(`[${new Date().toISOString()}] Creating new bill - Bill Number: ${billNumber}, Customer ID: ${customerId}`);
 
     // Validate required fields
@@ -290,6 +290,14 @@ app.post('/api/bills', (req, res) => {
       return res.status(400).json({ 
         success: false,
         message: 'Bill amount is required and must be greater than 0' 
+      });
+    }
+
+    if (!billDate || billDate.trim() === '') {
+      console.log(`[${new Date().toISOString()}] Validation failed: Bill date is required`);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Bill date is required' 
       });
     }
 
@@ -322,6 +330,7 @@ app.post('/api/bills', (req, res) => {
       customerId: customerId,
       customerName: customer.customerName,
       billAmount: parseFloat(billAmount),
+      billDate: billDate.trim(),
       notes: notes ? notes.trim() : '',
       createdAt: new Date().toISOString()
     };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { API_ENDPOINTS } from '../config/api';
 
 function ViewCustomers() {
   const [customers, setCustomers] = useState([]);
@@ -17,7 +18,7 @@ function ViewCustomers() {
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:2026/api/customers');
+      const response = await fetch(API_ENDPOINTS.CUSTOMERS);
       const data = await response.json();
 
       if (data.success) {

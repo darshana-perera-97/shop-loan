@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 
 function AddCustomer() {
   const [formData, setFormData] = useState({
@@ -30,7 +31,7 @@ function AddCustomer() {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await fetch('http://localhost:2026/api/customers', {
+      const response = await fetch(API_ENDPOINTS.CUSTOMERS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
