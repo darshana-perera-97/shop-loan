@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config/api';
 
 function AddPayments() {
+  // Default to today's date
+  const today = new Date().toISOString().split('T')[0];
+  
   const [formData, setFormData] = useState({
     customerId: '',
     payingAmount: '',
+    paidDate: today,
     notes: ''
   });
   const [customers, setCustomers] = useState([]);
@@ -103,6 +107,11 @@ function AddPayments() {
       return;
     }
 
+    if (!formData.paidDate || formData.paidDate.trim() === '') {
+      setMessage({ type: 'danger', text: 'Paid date is required' });
+      return;
+    }
+
     setLoading(true);
     setMessage({ type: '', text: '' });
 
@@ -119,10 +128,11 @@ function AddPayments() {
 
       if (response.ok && data.success) {
         setMessage({ type: 'success', text: data.message || 'Payment recorded successfully!' });
-        // Reset form
+        // Reset form - keep paidDate for next entry
         setFormData({
           customerId: '',
           payingAmount: '',
+          paidDate: formData.paidDate,
           notes: ''
         });
         setSearchTerm('');
@@ -209,6 +219,21 @@ function AddPayments() {
                 onChange={handleChange}
                 step="0.01"
                 min="0.01"
+                required
+              />
+            </div>
+
+            <div className="mb-3">
+              <label htmlFor="paidDate" className="form-label text-start d-block">
+                Paid Date <span className="text-danger">*</span>
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                id="paidDate"
+                name="paidDate"
+                value={formData.paidDate}
+                onChange={handleChange}
                 required
               />
             </div>

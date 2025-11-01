@@ -87,6 +87,15 @@ function SingleCustomer() {
     return formatDate(bill.createdAt);
   };
 
+  const formatPaymentDate = (payment) => {
+    // Prioritize paidDate, fallback to createdAt for backwards compatibility
+    if (payment.paidDate) {
+      return formatDate(payment.paidDate);
+    }
+    // Only use createdAt if paidDate doesn't exist (for old payments)
+    return formatDate(payment.createdAt);
+  };
+
   // Get the date string from a bill (for filtering)
   const getBillDateString = (bill) => {
     if (bill.billDate) {
@@ -353,7 +362,7 @@ function SingleCustomer() {
                   {payments.map((payment, index) => (
                     <tr key={index}>
                       <td>LKR {formatAmount(payment.payingAmount)}</td>
-                      <td>{formatDate(payment.createdAt)}</td>
+                      <td>{formatPaymentDate(payment)}</td>
                     </tr>
                   ))}
                 </tbody>

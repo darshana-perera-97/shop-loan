@@ -109,14 +109,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Root API endpoint
-app.get('/', (req, res) => {
-  console.log(`[${new Date().toISOString()}] Root endpoint accessed`);
-  res.json({ 
-    message: 'Loan API is running',
-    status: 'success'
-  });
-});
+// Root route removed - React app will handle the root route
+// Use /api/* routes for API endpoints
 
 // Get all customers endpoint
 app.get('/api/customers', (req, res) => {
@@ -410,7 +404,7 @@ app.get('/api/payments/customer/:id', (req, res) => {
 // Create payment endpoint
 app.post('/api/payments', (req, res) => {
   try {
-    const { customerId, payingAmount, notes } = req.body;
+    const { customerId, payingAmount, paidDate, notes } = req.body;
     console.log(`[${new Date().toISOString()}] Creating new payment - Customer ID: ${customerId}, Amount: ${payingAmount}`);
 
     // Validate required fields
@@ -427,6 +421,14 @@ app.post('/api/payments', (req, res) => {
       return res.status(400).json({ 
         success: false,
         message: 'Paying amount is required and must be greater than 0' 
+      });
+    }
+
+    if (!paidDate || paidDate.trim() === '') {
+      console.log(`[${new Date().toISOString()}] Validation failed: Paid date is required`);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Paid date is required' 
       });
     }
 
@@ -447,6 +449,7 @@ app.post('/api/payments', (req, res) => {
       customerId: customerId,
       customerName: customer.customerName,
       payingAmount: parseFloat(payingAmount),
+      paidDate: paidDate.trim(),
       notes: notes ? notes.trim() : '',
       createdAt: new Date().toISOString()
     };
@@ -496,6 +499,38 @@ app.post('/api/payments', (req, res) => {
     });
   }
 });
+
+// Path to React build folder
+const buildPath = path.join(__dirname, '..', 'frontend', 'build');
+
+// Serve static files from React build folder (must be after API routes)
+if (fs.existsSync(buildPath)) {
+  // Serve static assets from the React build folder
+  app.use(express.static(buildPath));
+  
+  // Handle React routing - return all requests to React app
+  // This must be the last route to catch all non-API routes
+  // Remove the old root route and use catch-all instead
+  app.get('*', (req, res, next) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api')) {
+      return next(); // Let API routes be handled normally
+    }
+    // Serve React app for all other routes
+    res.sendFile(path.join(buildPath, 'index.html'), (err) => {
+      if (err) {
+        console.error(`[${new Date().toISOString()}] Error serving index.html:`, err);
+        res.status(500).send('Error loading page');
+      }
+    });
+  });
+  
+  console.log(`[${new Date().toISOString()}] React build folder found - serving static files from ${buildPath}`);
+  console.log(`[${new Date().toISOString()}] Frontend will be available at http://localhost:${PORT}/`);
+} else {
+  console.log(`[${new Date().toISOString()}] React build folder not found at ${buildPath}`);
+  console.log(`[${new Date().toISOString()}] To build React app: cd frontend && npm run build`);
+}
 
 // Start server
 app.listen(PORT, () => {
