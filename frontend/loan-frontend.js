@@ -6,7 +6,8 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'build')));
 
 // Handle React routing, return all requests to React app
-app.get('*', (req, res) => {
+// Use app.use() instead of app.get('*') for Express v5 compatibility
+app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
